@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import Mission from './pages/Mission';
 import Finished from './pages/Finished';
+import Market from './pages/Market';
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
@@ -39,7 +40,7 @@ function App() {
               <Route path="/register" element={<ProtectedRoute><Register /></ProtectedRoute>} />
               <Route path="/home" element={<ProtectedRoute><RequireTeam><Home /></RequireTeam></ProtectedRoute>} />
               <Route path="/mission" element={<ProtectedRoute><RequireTeam><Mission /></RequireTeam></ProtectedRoute>} />
-              <Route path="/market" element={<ProtectedRoute><RequireTeam><div>Market (Pending Module 4)</div></RequireTeam></ProtectedRoute>} />
+              <Route path="/market" element={<ProtectedRoute><RequireTeam><Market /></RequireTeam></ProtectedRoute>} />
               <Route path="/finished" element={<ProtectedRoute><RequireTeam><Finished /></RequireTeam></ProtectedRoute>} />
             </Routes>
           </MarketProvider>
