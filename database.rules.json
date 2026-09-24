@@ -1,0 +1,44 @@
+{
+  /*
+    Firebase Security Rules for Circuit Hunt.
+    
+    TRADEOFFS NOTED FOR THIS EVENT:
+    1. /meta/circuitAssignmentCounts: Writable by any authenticated user for the client-side transaction. A malicious client could technically tamper with the counters.
+    2. /gameConfig & /adminSession: Writable by any authenticated user since the admin dashboard runs purely client-side gated by a passcode UI, rather than a true backend admin role.
+    3. /teams: The admin dashboard needs to read ALL teams for the leaderboard, meaning /teams read is open to any authenticated user. A logged-in player could technically read (but not write) other teams' data via devtools.
+  */
+  "rules": {
+    "components": {
+      ".read": "auth != null",
+      ".write": false
+    },
+    "outposts": {
+      ".read": "auth != null",
+      ".write": false
+    },
+    "circuits": {
+      ".read": "auth != null",
+      ".write": false
+    },
+    "meta": {
+      "circuitAssignmentCounts": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "gameConfig": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "adminSession": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "teams": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    }
+  }
+}
