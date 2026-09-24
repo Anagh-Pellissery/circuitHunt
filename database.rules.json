@@ -5,7 +5,7 @@
     TRADEOFFS NOTED FOR THIS EVENT:
     1. /meta/circuitAssignmentCounts: Writable by any authenticated user for the client-side transaction. A malicious client could technically tamper with the counters.
     2. /gameConfig & /adminSession: Writable by any authenticated user since the admin dashboard runs purely client-side gated by a passcode UI, rather than a true backend admin role.
-    3. /teams: The admin dashboard needs to read ALL teams for the leaderboard, meaning /teams read is open to any authenticated user. A logged-in player could technically read (but not write) other teams' data via devtools.
+    3. /teams: The admin dashboard needs to read ALL teams for the leaderboard, and the new "Reset Game Data" button needs to delete all teams. Thus, both read and write are fully open to any authenticated user. A logged-in player could technically delete other teams' data via devtools.
   */
   "rules": {
     "components": {
@@ -36,9 +36,7 @@
     },
     "teams": {
       ".read": "auth != null",
-      "$uid": {
-        ".write": "auth != null && auth.uid == $uid"
-      }
+      ".write": "auth != null"
     }
   }
 }
