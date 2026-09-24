@@ -13,6 +13,13 @@ export default function Login() {
     setError('');
     setLoading(true);
     const provider = new GoogleAuthProvider();
+    const allowedDomain = import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN;
+    if (allowedDomain) {
+      provider.setCustomParameters({
+        hd: allowedDomain
+      });
+    }
+
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;

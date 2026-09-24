@@ -26,9 +26,12 @@ export default function Register() {
       let assignedCircuit = null;
       
       await runTransaction(countsRef, (counts) => {
-        if (!counts) return counts;
+        let currentCounts = counts;
+        if (!currentCounts) {
+          currentCounts = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0, c6: 0, c7: 0, c8: 0 };
+        }
         
-        const entries = Object.entries(counts);
+        const entries = Object.entries(currentCounts);
         let minCount = Infinity;
         for (const [id, count] of entries) {
           if (count < minCount) minCount = count;
@@ -38,8 +41,8 @@ export default function Register() {
         const picked = minCircuits[Math.floor(Math.random() * minCircuits.length)];
         assignedCircuit = picked;
         
-        counts[picked]++;
-        return counts;
+        currentCounts[picked]++;
+        return currentCounts;
       });
       
       if (!assignedCircuit) throw new Error("Failed to assign circuit.");
@@ -63,7 +66,7 @@ export default function Register() {
       
       await set(teamRef, teamData);
       
-      navigate('/mission');
+      navigate('/mission', { state: { justRegistered: true } });
     } catch (err) {
       console.error(err);
       setError(err.message);
