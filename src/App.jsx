@@ -8,6 +8,7 @@ import Home from './pages/Home';
 import Mission from './pages/Mission';
 import Finished from './pages/Finished';
 import Market from './pages/Market';
+import AdminQrCodes from './pages/AdminQrCodes';
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
@@ -42,6 +43,8 @@ function App() {
               <Route path="/mission" element={<ProtectedRoute><RequireTeam><Mission /></RequireTeam></ProtectedRoute>} />
               <Route path="/market" element={<ProtectedRoute><RequireTeam><Market /></RequireTeam></ProtectedRoute>} />
               <Route path="/finished" element={<ProtectedRoute><RequireTeam><Finished /></RequireTeam></ProtectedRoute>} />
+              {/* Admin Routes (Passcode gating will be added in Module 6) */}
+              <Route path="/admin/qr" element={<AdminQrCodes />} />
             </Routes>
           </MarketProvider>
         </BrowserRouter>
