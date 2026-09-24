@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useTeam } from '../context/TeamContext';
 import { db } from '../lib/firebase';
 import { ref, get } from 'firebase/database';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Button } from '../components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 
 export default function Mission() {
   const { team } = useTeam();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   const [circuit, setCircuit] = useState(null);
   const [componentNames, setComponentNames] = useState({});
 
@@ -15,43 +17,44 @@ export default function Mission() {
     const fetchData = async () => {
       if (team?.circuitId) {
         const snap = await get(ref(db, `circuits/${team.circuitId}`));
-        if (snap.exists()) {
-          setCircuit(snap.val());
-        }
+        if (snap.exists()) setCircuit(snap.val());
         const compSnap = await get(ref(db, 'components'));
-        if (compSnap.exists()) {
-          setComponentNames(compSnap.val());
-        }
+        if (compSnap.exists()) setComponentNames(compSnap.val());
       }
     };
     fetchData();
   }, [team?.circuitId]);
 
-  // If not just registered, redirect to home
   if (!location.state?.justRegistered) {
     return <Navigate to="/home" replace />;
   }
 
-  if (!team) return null;
+  if (!circuit) return <div className="min-h-screen bg-muted flex items-center justify-center font-medium">Loading Mission...</div>;
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-      <h1>Your Mission: {circuit ? circuit.name : 'Loading...'}</h1>
-      <p>To win, you must collect the following components:</p>
-      
-      {circuit && (
-        <ul style={{ listStyle: 'none', padding: 0, fontSize: '1.2rem', marginBottom: '2rem' }}>
-          {circuit.required.map(compId => (
-            <li key={compId} style={{ padding: '0.5rem', background: '#e0e0e0', margin: '0.5rem 0', borderRadius: '4px', color: 'black' }}>
-              {componentNames[compId]?.name || compId}
-            </li>
-          ))}
-        </ul>
-      )}
-      
-      <button onClick={() => navigate('/home', { replace: true })} style={{ fontSize: '1.2rem', padding: '0.5rem 2rem' }}>
-        Let's go!
-      </button>
+    <div className="min-h-screen flex items-center justify-center bg-muted p-4">
+      <Card className="w-full max-w-md bg-white border-none shadow-xl rounded-[2.5rem] overflow-hidden">
+        <div className="bg-black p-10 text-center text-white">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-2">Your Mission</h2>
+          <CardTitle className="text-4xl font-extrabold">{circuit.name}</CardTitle>
+        </div>
+        <CardContent className="px-8 py-8 space-y-6 text-center">
+          <p className="text-gray-600 font-medium">You must collect the following components to complete your circuit:</p>
+          <ul className="space-y-3">
+            {circuit.required.map(id => (
+              <li key={id} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 font-bold text-lg">
+                {componentNames[id]?.name || id}
+              </li>
+            ))}
+          </ul>
+          <Button 
+            onClick={() => navigate('/home')} 
+            className="w-full h-14 text-lg mt-4"
+          >
+            Let's go!
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

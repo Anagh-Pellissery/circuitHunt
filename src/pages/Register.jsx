@@ -1,74 +1,71 @@
 import { useState } from 'react';
+import { db, auth } from '../lib/firebase';
+import { ref, runTransaction, get } from 'firebase/database';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../lib/firebase';
-import { ref, runTransaction, get, set } from 'firebase/database';
+import { Button } from '../components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 
 export default function Register() {
   const [teamName, setTeamName] = useState('');
-  const [leaderName, setLeaderName] = useState(auth.currentUser?.displayName || '');
-  const [member1, setMember1] = useState('');
-  const [member2, setMember2] = useState('');
-  const [member3, setMember3] = useState('');
+  const [leaderName, setLeaderName] = useState('');
+  const [memberString, setMemberString] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!auth.currentUser) return setError('Not authenticated. Please go back and sign in.');
     setLoading(true);
+    setError('');
     
     try {
       const uid = auth.currentUser.uid;
-      const email = auth.currentUser.email;
-
-      const countsRef = ref(db, 'meta/circuitAssignmentCounts');
-      let assignedCircuit = null;
+      const gameConfigSnap = await get(ref(db, 'gameConfig'));
+      const startingBalance = gameConfigSnap.val()?.startingBalance || 0;
       
-      await runTransaction(countsRef, (counts) => {
-        let currentCounts = counts;
-        if (!currentCounts) {
-          currentCounts = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0, c6: 0, c7: 0, c8: 0 };
+      const countsRef = ref(db, 'meta/circuitAssignmentCounts');
+      let assignedCircuit = 'circuit_1';
+      
+      await runTransaction(countsRef, (currentData) => {
+        if (!currentData) {
+          assignedCircuit = 'circuit_1';
+          return { circuit_1: 1, circuit_2: 0, circuit_3: 0, circuit_4: 0, circuit_5: 0, circuit_6: 0 };
         }
         
-        const entries = Object.entries(currentCounts);
         let minCount = Infinity;
-        for (const [id, count] of entries) {
-          if (count < minCount) minCount = count;
+        let selected = null;
+        for (const [circuit, count] of Object.entries(currentData)) {
+          if (count < minCount) {
+            minCount = count;
+            selected = circuit;
+          }
         }
-        
-        const minCircuits = entries.filter(([id, count]) => count === minCount).map(([id]) => id);
-        const picked = minCircuits[Math.floor(Math.random() * minCircuits.length)];
-        assignedCircuit = picked;
-        
-        currentCounts[picked]++;
-        return currentCounts;
+        assignedCircuit = selected;
+        currentData[selected] = (currentData[selected] || 0) + 1;
+        return currentData;
       });
       
-      if (!assignedCircuit) throw new Error("Failed to assign circuit.");
-
-      const balanceSnap = await get(ref(db, 'gameConfig/startingBalance'));
-      const startingBalance = balanceSnap.exists() ? balanceSnap.val() : 200;
-
       const teamRef = ref(db, `teams/${uid}`);
-      const sessionId = crypto.randomUUID();
-      const teamData = {
-        teamName,
-        leaderName,
-        leaderEmail: email,
-        members: [member1, member2, member3].filter(Boolean),
-        circuitId: assignedCircuit,
-        balance: startingBalance,
-        status: "playing",
-        activeSessionId: sessionId,
-        createdAt: Date.now(),
-      };
-      
-      await set(teamRef, teamData);
+      await runTransaction(teamRef, (currentTeam) => {
+        if (currentTeam === null) {
+          return {
+            uid,
+            teamName,
+            leaderName,
+            members: memberString.split(',').map(m => m.trim()).filter(Boolean),
+            circuitId: assignedCircuit,
+            balance: startingBalance,
+            inventory: {},
+            logs: {},
+            status: 'playing',
+            finishedAt: null
+          };
+        }
+        return currentTeam;
+      });
       
       navigate('/mission', { state: { justRegistered: true } });
     } catch (err) {
-      console.error(err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -76,41 +73,59 @@ export default function Register() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '400px', margin: '0 auto' }}>
-      <h1>Register Your Team</h1>
-      {error && <p style={{color: 'red', fontWeight: 'bold'}}>{error}</p>}
-      <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <input 
-          placeholder="Team Name" 
-          required 
-          value={teamName} 
-          onChange={e => setTeamName(e.target.value)} 
-        />
-        <input 
-          placeholder="Leader Name" 
-          required 
-          value={leaderName} 
-          onChange={e => setLeaderName(e.target.value)} 
-        />
-        <input 
-          placeholder="Teammate 2 Name (optional)" 
-          value={member1} 
-          onChange={e => setMember1(e.target.value)} 
-        />
-        <input 
-          placeholder="Teammate 3 Name (optional)" 
-          value={member2} 
-          onChange={e => setMember2(e.target.value)} 
-        />
-        <input 
-          placeholder="Teammate 4 Name (optional)" 
-          value={member3} 
-          onChange={e => setMember3(e.target.value)} 
-        />
-        <button disabled={loading} type="submit">
-          {loading ? 'Registering...' : 'Complete Registration'}
-        </button>
-      </form>
+    <div className="min-h-screen flex items-center justify-center bg-muted p-4">
+      <Card className="w-full max-w-md bg-white border-none shadow-xl rounded-[2.5rem]">
+        <CardHeader className="text-center pt-8 pb-4">
+          <CardTitle className="text-3xl font-extrabold tracking-tight">Register Team</CardTitle>
+          <CardDescription>Enter your team details to begin</CardDescription>
+        </CardHeader>
+        <CardContent className="px-8 pb-8">
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold mb-2">Team Name</label>
+              <input 
+                type="text" 
+                value={teamName} 
+                onChange={e => setTeamName(e.target.value)} 
+                required 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black transition-all"
+                placeholder="e.g. Cyber Ninjas"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2">Leader Name</label>
+              <input 
+                type="text" 
+                value={leaderName} 
+                onChange={e => setLeaderName(e.target.value)} 
+                required 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black transition-all"
+                placeholder="John Doe"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2">Members (comma separated)</label>
+              <input 
+                type="text" 
+                value={memberString} 
+                onChange={e => setMemberString(e.target.value)} 
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black transition-all"
+                placeholder="Jane, Smith, Alex"
+              />
+            </div>
+            
+            {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
+            
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="w-full h-12 mt-4 text-base font-semibold"
+            >
+              {loading ? 'Registering...' : 'Register Team'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

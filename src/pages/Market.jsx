@@ -6,6 +6,9 @@ import { auth, db } from '../lib/firebase';
 import { ref, get, runTransaction, serverTimestamp } from 'firebase/database';
 import { getActiveWindowIndex, getPrice } from '../lib/priceEngine';
 import { calculateSwapDelta, checkCircuitCompletion } from '../lib/gameLogic';
+import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 
 export default function Market() {
   const { team } = useTeam();
@@ -16,7 +19,7 @@ export default function Market() {
   const [components, setComponents] = useState({});
   const [circuit, setCircuit] = useState(null);
   const [activeWindow, setActiveWindow] = useState(null);
-  const [tab, setTab] = useState('buy'); // 'buy' or 'sell'
+  const [tab, setTab] = useState('buy');
   const [loadingAction, setLoadingAction] = useState(false);
   const [countdownStr, setCountdownStr] = useState('');
 
@@ -59,9 +62,11 @@ export default function Market() {
 
   if (gameConfig && gameConfig.status !== 'running') {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <h2>The event hasn't started yet.</h2>
-        <button onClick={() => navigate('/home')}>Return to Home</button>
+      <div className="min-h-screen flex items-center justify-center bg-muted p-4">
+        <Card className="max-w-md w-full bg-white text-center p-8 rounded-[2.5rem] border-none shadow-xl">
+          <h2 className="text-2xl font-bold mb-4">{gameConfig.status === 'ended' ? 'This event has ended.' : "The event hasn't started yet."}</h2>
+          <Button onClick={() => navigate('/home')} className="w-full">Return to Home</Button>
+        </Card>
       </div>
     );
   }
@@ -69,9 +74,7 @@ export default function Market() {
   const handleSell = async (componentId, boughtPrice) => {
     if (loadingAction) return;
     setLoadingAction(true);
-    
     const teamRef = ref(db, `teams/${auth.currentUser.uid}`);
-    
     try {
       await runTransaction(teamRef, (currentTeam) => {
         if (!currentTeam) return currentTeam;
@@ -85,7 +88,6 @@ export default function Market() {
         currentTeam.logs[logId] = {
           type: "sell", outpostId: activeOutpost.slug, componentId, amount: boughtPrice, balanceAfter: currentTeam.balance, timestamp: Date.now()
         };
-        
         return currentTeam;
       });
     } catch (e) {
@@ -121,7 +123,6 @@ export default function Market() {
           currentTeam.finishedAt = serverTimestamp();
           finished = true;
         }
-        
         return currentTeam;
       });
       if (finished) navigate('/finished');
@@ -137,18 +138,13 @@ export default function Market() {
     if (currentPrice > boughtPrice && team.balance < (currentPrice - boughtPrice)) {
       return alert("Insufficient funds to cover the swap difference!");
     }
-    
     setLoadingAction(true);
     const teamRef = ref(db, `teams/${auth.currentUser.uid}`);
     let finished = false;
-    
     try {
       await runTransaction(teamRef, (currentTeam) => {
         if (!currentTeam) return currentTeam;
-        
-        if (currentPrice > boughtPrice && currentTeam.balance < (currentPrice - boughtPrice)) {
-          return;
-        }
+        if (currentPrice > boughtPrice && currentTeam.balance < (currentPrice - boughtPrice)) return;
         
         currentTeam.balance += boughtPrice;
         currentTeam.balance -= currentPrice;
@@ -167,7 +163,6 @@ export default function Market() {
           currentTeam.finishedAt = serverTimestamp();
           finished = true;
         }
-        
         return currentTeam;
       });
       if (finished) navigate('/finished');
@@ -181,81 +176,106 @@ export default function Market() {
   const inventoryItems = team.inventory ? Object.keys(team.inventory).filter(id => team.inventory[id].owned) : [];
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <div>
-          <h1>{activeOutpost.name}</h1>
-          <button onClick={() => navigate('/home')}>Exit Market</button>
+    <div className="min-h-screen bg-muted p-4 md:p-6 lg:p-8 font-sans pb-24">
+      <div className="max-w-2xl mx-auto space-y-6">
+        
+        {/* Header Bar */}
+        <div className="flex items-center justify-between">
+          <Button variant="outline" className="rounded-full h-10 w-10 p-0" onClick={() => navigate('/home')}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </Button>
+          <div className="text-right">
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Prices change in</p>
+            <Badge variant="outline" className="font-mono text-sm">{countdownStr}</Badge>
+          </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <h2 style={{ color: 'green' }}>Balance: ₹{team.balance}</h2>
-          <p>Prices change in: {countdownStr}</p>
-        </div>
-      </header>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-        <button onClick={() => setTab('buy')} style={{ flex: 1, padding: '1rem', background: tab === 'buy' ? '#ddd' : '#f5f5f5', color: 'black' }}>Buy / Swap</button>
-        <button onClick={() => setTab('sell')} style={{ flex: 1, padding: '1rem', background: tab === 'sell' ? '#ddd' : '#f5f5f5', color: 'black' }}>Sell</button>
+        {/* Store Title */}
+        <div className="px-2">
+          <h1 className="text-4xl font-extrabold tracking-tight">{activeOutpost.name}</h1>
+          <p className="text-xl font-medium text-gray-500 mt-1">₹{team.balance} Available Balance</p>
+        </div>
+
+        {/* Custom Tabs */}
+        <div className="flex bg-gray-200/50 p-1 rounded-full w-full max-w-sm">
+          <button 
+            onClick={() => setTab('buy')} 
+            className={`flex-1 py-2 px-4 rounded-full text-sm font-bold transition-all ${tab === 'buy' ? 'bg-black text-white shadow-md' : 'text-gray-500 hover:text-black'}`}
+          >
+            Buy & Swap
+          </button>
+          <button 
+            onClick={() => setTab('sell')} 
+            className={`flex-1 py-2 px-4 rounded-full text-sm font-bold transition-all ${tab === 'sell' ? 'bg-black text-white shadow-md' : 'text-gray-500 hover:text-black'}`}
+          >
+            Sell
+          </button>
+        </div>
+
+        {/* Listings */}
+        <div className="space-y-4 mt-6">
+          {tab === 'buy' && Object.keys(activeOutpost.prices).map(compId => {
+            const price = getPrice(activeOutpost, compId, activeWindow);
+            if (price === undefined) return null;
+            
+            const isOwned = team.inventory?.[compId]?.owned;
+            const boughtPrice = isOwned ? team.inventory[compId].boughtPrice : 0;
+            const swapData = isOwned ? calculateSwapDelta(price, boughtPrice) : null;
+            
+            return (
+              <Card key={compId} className="border-none shadow-sm rounded-3xl bg-white overflow-hidden flex items-center p-4">
+                <div className="h-16 w-16 bg-gray-100 rounded-2xl flex items-center justify-center shrink-0">
+                  <span className="font-bold text-xl">{compId.replace('c', '')}</span>
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="font-bold text-lg">{components[compId]?.name || compId}</h3>
+                  <p className="text-gray-500 font-medium">₹{price} / unit</p>
+                </div>
+                <div className="ml-4">
+                  {!isOwned ? (
+                    <Button disabled={loadingAction} onClick={() => handleBuy(compId, price)} className="rounded-full px-6">
+                      Buy
+                    </Button>
+                  ) : (
+                    <Button 
+                      disabled={loadingAction} 
+                      onClick={() => handleSwap(compId, price, boughtPrice)}
+                      variant={swapData.color === 'green' ? 'success' : 'default'}
+                      className={`rounded-full px-6 ${swapData.color === 'green' ? 'bg-green-500 hover:bg-green-600' : swapData.color === 'red' ? 'bg-red-500 hover:bg-red-600' : ''}`}
+                    >
+                      Swap {swapData.label}
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+
+          {tab === 'sell' && inventoryItems.map(compId => {
+            const stocksIt = activeOutpost.prices[compId] !== undefined;
+            if (!stocksIt) return null;
+            const boughtPrice = team.inventory[compId].boughtPrice;
+            
+            return (
+              <Card key={compId} className="border-none shadow-sm rounded-3xl bg-white overflow-hidden flex items-center p-4">
+                <div className="h-16 w-16 bg-gray-100 rounded-2xl flex items-center justify-center shrink-0">
+                  <span className="font-bold text-xl">{compId.replace('c', '')}</span>
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="font-bold text-lg">{components[compId]?.name || compId}</h3>
+                  <p className="text-gray-500 font-medium">Bought: ₹{boughtPrice}</p>
+                </div>
+                <div className="ml-4">
+                  <Button variant="outline" disabled={loadingAction} onClick={() => handleSell(compId, boughtPrice)} className="rounded-full px-6 border-gray-300">
+                    Sell +₹{boughtPrice}
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
       </div>
-
-      {tab === 'buy' && (
-        <div>
-          <h3>Available Components</h3>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {Object.keys(activeOutpost.prices).map(compId => {
-              const price = getPrice(activeOutpost, compId, activeWindow);
-              if (price === undefined) return null;
-              
-              const isOwned = team.inventory?.[compId]?.owned;
-              const boughtPrice = isOwned ? team.inventory[compId].boughtPrice : 0;
-              
-              return (
-                <li key={compId} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#fff', borderBottom: '1px solid #ccc', color: 'black' }}>
-                  <div>
-                    <strong>{components[compId]?.name || compId}</strong>
-                    <br />
-                    <span>Current Price: ₹{price}</span>
-                  </div>
-                  <div>
-                    {!isOwned ? (
-                      <button disabled={loadingAction} onClick={() => handleBuy(compId, price)}>Buy ₹{price}</button>
-                    ) : (
-                      <button disabled={loadingAction} onClick={() => handleSwap(compId, price, boughtPrice)}>
-                        Swap {calculateSwapDelta(price, boughtPrice).label}
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      {tab === 'sell' && (
-        <div>
-          <h3>Your Sellable Components</h3>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {inventoryItems.map(compId => {
-              const stocksIt = activeOutpost.prices[compId] !== undefined;
-              if (!stocksIt) return null;
-              
-              const boughtPrice = team.inventory[compId].boughtPrice;
-              
-              return (
-                <li key={compId} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#fff', borderBottom: '1px solid #ccc', color: 'black' }}>
-                  <div>
-                    <strong>{components[compId]?.name || compId}</strong>
-                    <br />
-                    <span>Bought for: ₹{boughtPrice}</span>
-                  </div>
-                  <button disabled={loadingAction} onClick={() => handleSell(compId, boughtPrice)}>Sell +₹{boughtPrice}</button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
