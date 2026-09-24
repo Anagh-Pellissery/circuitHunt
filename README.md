@@ -1,16 +1,13 @@
-# React + Vite
+# Circuit Hunt
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Setting up Firebase Admin
 
-Currently, two official plugins are available:
+To run the seed script, you will need a Firebase Service Account key:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Go to your Firebase Console.
+2. Navigate to **Project settings > Service accounts**.
+3. Click **Generate new private key**.
+4. Save the downloaded JSON file to the root of this repository and rename it to `serviceAccountKey.json`.
+5. Run the seed script with `node scripts/seed.js`.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+**Note:** `serviceAccountKey.json` is added to `.gitignore` and should never be committed to version control.
